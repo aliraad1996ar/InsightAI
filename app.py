@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from utils.summary import get_summary
+from utils.dashboard import get_dashboard_metrics
+from utils.analysis import analyze_by
 
 
 st.set_page_config(
@@ -32,6 +34,7 @@ if uploaded_file is not None:
         )
 
         summary = get_summary(df)
+        dashboard_metrics = get_dashboard_metrics(df)
 
         st.subheader("Dataset Information")
 
@@ -41,6 +44,79 @@ if uploaded_file is not None:
         col2.metric("Columns", summary["columns"])
         col3.metric("Missing Values", summary["missing"])
         col4.metric("Duplicate Rows", summary["duplicates"])
+
+        st.subheader("Smart Executive Dashboard")
+
+        metric_col1, metric_col2, metric_col3, metric_col4, metric_col5 = st.columns(5)
+
+        total_active = dashboard_metrics["total_active"]
+        total_churn = dashboard_metrics["total_churn"]
+        total_new = dashboard_metrics["total_new"]
+        total_inactive = dashboard_metrics["total_inactive"]
+        churn_rate = dashboard_metrics["churn_rate"]
+
+        metric_col1.metric(
+            "Total Active Users",
+            f"{total_active:,.0f}" if total_active is not None else "Not Found",
+        )
+
+        metric_col2.metric(
+            "Total Churn Users",
+            f"{total_churn:,.0f}" if total_churn is not None else "Not Found",
+        )
+
+        metric_col3.metric(
+            "Total New Users",
+            f"{total_new:,.0f}" if total_new is not None else "Not Found",
+        )
+
+        metric_col4.metric(
+            "Total Inactive Users",
+            f"{total_inactive:,.0f}" if total_inactive is not None else "Not Found",
+        )
+
+        metric_col5.metric(
+            "Churn Rate",
+            f"{churn_rate:.2f}%" if churn_rate is not None else "Not Found",
+        )
+
+        st.subheader("Performance Analysis")
+
+        analysis_options = {
+            "Main Contractor": "MainZoneContractor",
+            "Zone Contractor": "ZoneContractor",
+            "State": "StateName",
+            "Main Zone": "MainZoneName",
+            "Zone": "Zone",
+        }
+
+        selected_analysis = st.selectbox(
+            "Analyze By",
+            options=list(analysis_options.keys()),
+        )
+
+        selected_column = analysis_options[selected_analysis]
+
+        analysis_df = analyze_by(df, selected_column)
+
+        analysis_df = analysis_df.sort_values(
+            by="Active_Users",
+            ascending=False,
+        )
+
+        st.dataframe(
+            analysis_df,
+            use_container_width=True,
+        )
+
+        if not analysis_df.empty:
+            best_entity = analysis_df.iloc[0]
+
+            st.success(
+                f"Best {selected_analysis}: "
+                f"{best_entity[selected_column]} "
+                f"with {best_entity['Active_Users']:,.0f} Active Users"
+            )
 
         numeric_columns = (
             df.select_dtypes(include="number")
